@@ -1,5 +1,22 @@
 import { spawn, type SpawnOptions } from 'node:child_process';
+import path from 'node:path';
 import type { UnixProcessSpec } from './process-spec';
+
+const ALLOWED_EXECUTABLES = new Set<string>(['/bin/echo']);
+
+function validateExecutablePath(executable: string): string {
+  const normalized = path.normalize(executable);
+
+  if (!path.isAbsolute(normalized)) {
+    throw new Error(`Unix process execution rejected: executable must be an absolute path (${executable})`);
+  }
+
+  if (!ALLOWED_EXECUTABLES.has(normalized)) {
+    throw new Error(`Unix process execution rejected: executable is not allowlisted (${normalized})`);
+  }
+
+  return normalized;
+}
 
 export interface ProcessExecution {
   pid: number;
@@ -24,7 +41,9 @@ export async function executeUnixProcess(
       }
     };
 
-    const proc = spawn(spec.executable, spec.argv.slice(1), {
+    const executable = validateExecutablePath(spec.executable);
+
+    const proc = spawn(executable, spec.argv.slice(1), {
       cwd: spec.cwd,
       env: spec.environ,
       stdio: [
