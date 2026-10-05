@@ -177,6 +177,12 @@ npm run build
 
 **Reference:** [Vitest](https://vitest.dev/) · [ESLint](https://eslint.org/docs/latest/)
 
+### Terminal107 boundary
+
+Terminal107 is the terminal experience layer above c107. It may run on desktop terminals or Android platform bindings such as an AVF Linux VM, Termux, or the Android shell. c107 remains the stable Cloud107 control namespace; Cloud107 remains authoritative for execution and state.
+
+Platform selection belongs to the platform-binding layer and must not create a second execution or scheduling authority.
+
 ### 10. Local Flutter reference
 
 The Flutter project remains a reference for application organization only. It is not a Cloud107 CLI dependency.
