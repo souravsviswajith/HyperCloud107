@@ -16,7 +16,7 @@ export interface PlatformBinding {
 }
 
 export interface PlatformBindingEnvironment {
-  platform: NodeJS.Platform;
+  platform: string;
   env?: Record<string, string | undefined>;
   files?: ReadonlySet<string>;
 }
