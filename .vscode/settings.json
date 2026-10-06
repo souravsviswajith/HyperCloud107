@@ -1,0 +1,8 @@
+{
+    "files.readonlyInclude": {
+        "{**/.c4z/.extsrcs/*.PROTSYM.cbl,**/.c4z/.extsrcs/*.PROTSYM.listing}": true
+    },
+    "dotrush.roslyn.projectOrSolutionFiles": [
+        "c:\\Users\\LENOVO\\107\\Cloud107\\Core107\\Core107.csproj"
+    ]
+}
