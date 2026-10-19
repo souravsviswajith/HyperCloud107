@@ -1,20 +1,27 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { requireAuth } from '../../middleware/auth';
 import { BudgetExceededError, BudgetLedger, estimateCost } from '../../ai/budget';
 import { completeWithProvider, estimateTokens, getProviderConfigs } from '../../ai/providers';
+import { requireAuth } from '../../middleware/auth';
 import { logger } from '../../utils/logger';
 
 export const aiRouter = Router();
 
-const requestSchema = z.object({
-  messages: z.array(z.object({
-    role: z.enum(['system', 'user', 'assistant']),
-    content: z.string().min(1).max(20_000),
-  })).min(1).max(40),
-  maxTokens: z.number().int().min(1).max(2048).optional(),
-  temperature: z.number().min(0).max(2).optional(),
-}).strict();
+const requestSchema = z
+  .object({
+    messages: z
+      .array(
+        z.object({
+          role: z.enum(['system', 'user', 'assistant']),
+          content: z.string().min(1).max(20_000),
+        }),
+      )
+      .min(1)
+      .max(40),
+    maxTokens: z.number().int().min(1).max(2048).optional(),
+    temperature: z.number().min(0).max(2).optional(),
+  })
+  .strict();
 
 const budget = new BudgetLedger({
   dailyUsd: readLimit('AI_DAILY_BUDGET_USD', 0.25),
@@ -31,15 +38,20 @@ aiRouter.get('/providers', requireAuth, (_req, res) => {
   res.json({
     providers: providers.map(({ name, model }) => ({ name, model })),
     configured: providers.length > 0,
-    routing: (process.env.AI_PROVIDER_ORDER || 'glm').split(',').map((item) => item.trim()),
+    routing: (process.env.AI_PROVIDER_ORDER || 'glm')
+      .split(',')
+      .map((item) => item.trim()),
   });
 });
 
 aiRouter.get('/usage', requireAuth, (req, res) => {
-  res.json({ usage: budget.get(req.user!.uid), budget: {
-    dailyUsd: readLimit('AI_DAILY_BUDGET_USD', 0.25),
-    requestUsd: readLimit('AI_REQUEST_BUDGET_USD', 0.05),
-  } });
+  res.json({
+    usage: budget.get(req.user!.uid),
+    budget: {
+      dailyUsd: readLimit('AI_DAILY_BUDGET_USD', 0.25),
+      requestUsd: readLimit('AI_REQUEST_BUDGET_USD', 0.05),
+    },
+  });
 });
 
 aiRouter.post('/chat', requireAuth, async (req, res) => {
@@ -48,22 +60,35 @@ aiRouter.post('/chat', requireAuth, async (req, res) => {
     res.status(400).json({ error: 'Invalid request', details: parsed.error.issues });
     return;
   }
+
   const providers = getProviderConfigs();
   if (!providers.length) {
-    res.status(503).json({ error: 'No AI provider configured. Set GLM_API_KEY or configure an explicit fallback provider.' });
+    res.status(503).json({
+      error:
+        'No AI provider configured. Set GLM_API_KEY or configure an explicit fallback provider.',
+    });
     return;
   }
 
   const input = parsed.data;
   const estimatedInputTokens = estimateTokens(input.messages);
-  const maxOutputTokens = Math.min(input.maxTokens ?? 1024, readLimit('AI_MAX_OUTPUT_TOKENS', 2048));
-  const primary = providers[0];
-  const estimatedCost = estimateCost(
-    estimatedInputTokens,
-    maxOutputTokens,
-    primary.inputCostPerMillion,
-    primary.outputCostPerMillion,
+  const maxOutputTokens = Math.min(
+    input.maxTokens ?? 1024,
+    readLimit('AI_MAX_OUTPUT_TOKENS', 2048),
   );
+  // Preflight against the most expensive configured route so failover cannot
+  // silently bypass the request budget.
+  const estimatedCost = Math.max(
+    ...providers.map((provider) =>
+      estimateCost(
+        estimatedInputTokens,
+        maxOutputTokens,
+        provider.inputCostPerMillion,
+        provider.outputCostPerMillion,
+      ),
+    ),
+  );
+
   try {
     budget.assertCanSpend(req.user!.uid, estimatedCost);
   } catch (error) {
@@ -74,7 +99,6 @@ aiRouter.post('/chat', requireAuth, async (req, res) => {
     throw error;
   }
 
-  const failures: string[] = [];
   for (const provider of providers) {
     try {
       const result = await completeWithProvider(provider, input);
@@ -84,7 +108,12 @@ aiRouter.post('/chat', requireAuth, async (req, res) => {
         provider.inputCostPerMillion,
         provider.outputCostPerMillion,
       );
-      const usage = budget.record(req.user!.uid, actualCost, result.usage.inputTokens, result.usage.outputTokens);
+      const usage = budget.record(
+        req.user!.uid,
+        actualCost,
+        result.usage.inputTokens,
+        result.usage.outputTokens,
+      );
       logger.info('AI completion succeeded', {
         provider: result.provider,
         model: result.model,
@@ -94,11 +123,14 @@ aiRouter.post('/chat', requireAuth, async (req, res) => {
         estimatedCostUsd: actualCost,
         correlationId: req.context?.correlationId,
       });
-      res.json({ ...result, usage: { ...result.usage, estimatedCostUsd: actualCost }, budget: usage });
+      res.json({
+        ...result,
+        usage: { ...result.usage, estimatedCostUsd: actualCost },
+        budget: usage,
+      });
       return;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown provider error';
-      failures.push(`${provider.name}: ${message}`);
       logger.warn('AI provider failed', {
         provider: provider.name,
         correlationId: req.context?.correlationId,
@@ -106,6 +138,7 @@ aiRouter.post('/chat', requireAuth, async (req, res) => {
       });
     }
   }
+
   res.status(502).json({
     error: 'All configured AI providers failed',
     correlationId: req.context?.correlationId,
