@@ -1,6 +1,7 @@
 # Cloud107
 
 Cloud107 runs and manages applications, environments, nodes, and workloads from infrastructure under the operator's control.
+with minimal operational cost
 
 ## Interfaces
 
