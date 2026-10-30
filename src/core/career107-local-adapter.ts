@@ -79,9 +79,30 @@ export class Career107LocalAdapter {
       throw new Career107AdapterError('Career107 returned a non-JSON response');
     }
 
-    const body = await response.arrayBuffer();
-    if (body.byteLength > 256 * 1024) {
+    const contentLength = Number(response.headers.get('content-length') ?? 0);
+    if (contentLength > 256 * 1024) {
       throw new Career107AdapterError('Career107 metadata response exceeded 256 KiB');
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Career107AdapterError('Career107 returned an empty response stream');
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > 256 * 1024) {
+        await reader.cancel();
+        throw new Career107AdapterError('Career107 metadata response exceeded 256 KiB');
+      }
+      chunks.push(value);
+    }
+    const body = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      body.set(chunk, offset);
+      offset += chunk.byteLength;
     }
 
     try {
