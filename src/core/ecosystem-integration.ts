@@ -8,7 +8,10 @@ const integrationCapabilitySchema = z.object({
   input: z.string().min(1),
   output: z.string().min(1),
   executable: z.boolean(),
-}).strict();
+}).strict().refine(
+  (capability) => capability.executable === (capability.mode === 'invoke'),
+  { message: 'Only invoke capabilities may be executable' },
+);
 
 export const ecosystemIntegrationSchema = z.object({
   schemaVersion: z.literal(1),
