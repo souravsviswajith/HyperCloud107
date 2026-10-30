@@ -25,7 +25,6 @@ export const workspaces = pgTable('workspaces', {
 
 export const usersRelations = relations(users, ({ many }) => ({
   workspaces: many(workspaces),
-  invocations: many(invocations),
 }));
 
 export const workspacesRelations = relations(workspaces, ({ one }) => ({
