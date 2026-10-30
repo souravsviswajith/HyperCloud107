@@ -12,6 +12,8 @@ describe('ecosystem integration registry', () => {
     const atlas = registry.resolve('107.project-atlas');
     const career107 = registry.resolve('107.career-assessment');
 
+    expect(atlas?.sourceRevision).toMatch(/^[a-f0-9]{40}$/);
+    expect(career107?.sourceRevision).toMatch(/^[a-f0-9]{40}$/);
     expect(atlas?.integration.capabilities[0]).toMatchObject({
       id: 'workstation.plan.preview',
       mode: 'plan-only',
