@@ -20,6 +20,7 @@ export const ecosystemIntegrationSchema = z.object({
   repository: z.string().url(),
   license: z.string().min(1),
   version: z.string().min(1),
+  sourceRevision: z.string().regex(/^[a-f0-9]{40}$/),
   integration: z.object({
     contractVersion: z.number().int().positive(),
     capabilities: z.array(integrationCapabilitySchema).min(1),
@@ -39,6 +40,7 @@ export const projectAtlasIntegration: EcosystemIntegration = ecosystemIntegratio
   repository: 'https://github.com/souravsviswajith/Project-Atlas-Bootstrap',
   license: 'Apache-2.0',
   version: 'unreleased',
+  sourceRevision: 'd11f9f2d8893c0dc795a85d539fae760a34e9428',
   integration: {
     contractVersion: 1,
     capabilities: [
@@ -67,6 +69,7 @@ export const career107Integration: EcosystemIntegration = ecosystemIntegrationSc
   repository: 'https://github.com/souravsviswajith/psychometric-assessment-107',
   license: 'GPL-3.0-or-later',
   version: 'unreleased',
+  sourceRevision: 'f85077771e5b7b27c5d6da10f12b2568aee1416d',
   integration: {
     contractVersion: 1,
     capabilities: [
