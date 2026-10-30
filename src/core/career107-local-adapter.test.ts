@@ -4,6 +4,7 @@ import { Career107LocalAdapter } from './career107-local-adapter';
 describe('Career107LocalAdapter', () => {
   it.each([
     'https://127.0.0.1:8080',
+    'http://localhost:8080',
     'http://example.com',
     'http://127.0.0.1.evil.test',
     'http://user:pass@127.0.0.1:8080',
@@ -15,9 +16,8 @@ describe('Career107LocalAdapter', () => {
 
   it.each([
     'http://127.0.0.1:8080',
-    'http://localhost:8080',
     'http://[::1]:8080',
-  ])('accepts loopback base URL %s', (baseUrl) => {
+  ])('accepts numeric loopback base URL %s', (baseUrl) => {
     expect(() => new Career107LocalAdapter(baseUrl)).not.toThrow();
   });
 });
