@@ -3,7 +3,7 @@ import { z } from 'zod';
 const integrationCapabilitySchema = z.object({
   id: z.string().regex(/^[a-z][a-z0-9.-]+$/),
   contractVersion: z.number().int().positive(),
-  mode: z.enum(['plan-only', 'invoke']),
+  mode: z.enum(['plan-only', 'read-only', 'invoke']),
   description: z.string().min(1),
   input: z.string().min(1),
   output: z.string().min(1),
@@ -26,9 +26,8 @@ export const ecosystemIntegrationSchema = z.object({
 export type EcosystemIntegration = z.infer<typeof ecosystemIntegrationSchema>;
 
 /**
- * Project Atlas currently produces deterministic, non-mutating workstation
- * plans. It is intentionally registered as a plan-only integration; this
- * descriptor does not grant HyperCloud permission to install software.
+ * Project Atlas produces workstation plans. Registration is plan-only and
+ * does not grant HyperCloud permission to install software or execute commands.
  */
 export const projectAtlasIntegration: EcosystemIntegration = ecosystemIntegrationSchema.parse({
   schemaVersion: 1,
@@ -36,7 +35,7 @@ export const projectAtlasIntegration: EcosystemIntegration = ecosystemIntegratio
   name: 'Project Atlas Bootstrap',
   repository: 'https://github.com/souravsviswajith/Project-Atlas-Bootstrap',
   license: 'Apache-2.0',
-  version: '0.0.0',
+  version: 'unreleased',
   integration: {
     contractVersion: 1,
     capabilities: [
@@ -53,10 +52,47 @@ export const projectAtlasIntegration: EcosystemIntegration = ecosystemIntegratio
   },
 });
 
+/**
+ * Career107 is a separate Go runtime with a loopback HTTP API. HyperCloud may
+ * inspect health and public catalog metadata only; assessment sessions and
+ * personal answers are never proxied through this adapter.
+ */
+export const career107Integration: EcosystemIntegration = ecosystemIntegrationSchema.parse({
+  schemaVersion: 1,
+  id: '107.career-assessment',
+  name: 'Career Assessment 107',
+  repository: 'https://github.com/souravsviswajith/psychometric-assessment-107',
+  license: 'GPL-3.0-or-later',
+  version: 'unreleased',
+  integration: {
+    contractVersion: 1,
+    capabilities: [
+      {
+        id: 'career107.health.read',
+        contractVersion: 1,
+        mode: 'read-only',
+        description: 'Read the local Career107 runtime health status.',
+        input: 'No input',
+        output: 'Career107 health response',
+        executable: false,
+      },
+      {
+        id: 'career107.catalog.read',
+        contractVersion: 1,
+        mode: 'read-only',
+        description: 'Read the public instrument and capability catalog; no session data is included.',
+        input: 'No input',
+        output: 'Career107 public catalog',
+        executable: false,
+      },
+    ],
+  },
+});
+
 export class EcosystemIntegrationRegistry {
   private readonly integrations = new Map<string, EcosystemIntegration>();
 
-  constructor(initial: EcosystemIntegration[] = [projectAtlasIntegration]) {
+  constructor(initial: EcosystemIntegration[] = [projectAtlasIntegration, career107Integration]) {
     for (const integration of initial) this.register(integration);
   }
 
