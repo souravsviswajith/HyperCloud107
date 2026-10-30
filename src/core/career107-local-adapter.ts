@@ -30,7 +30,8 @@ export class Career107LocalAdapter {
       throw new Career107AdapterError('Career107 base URL must be a valid URL', { cause: error });
     }
 
-    const loopbackHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
+    // Numeric loopback literals avoid DNS-based SSRF and rebinding concerns.
+    const loopbackHosts = new Set(['127.0.0.1', '[::1]']);
     if (
       parsed.protocol !== 'http:' ||
       !loopbackHosts.has(parsed.hostname) ||
@@ -40,7 +41,7 @@ export class Career107LocalAdapter {
       parsed.hash !== '' ||
       (parsed.pathname !== '' && parsed.pathname !== '/')
     ) {
-      throw new Career107AdapterError('Career107 adapter only permits an HTTP loopback base URL');
+      throw new Career107AdapterError('Career107 adapter only permits an HTTP numeric loopback base URL');
     }
 
     this.baseUrl = parsed;
